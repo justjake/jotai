@@ -9,8 +9,8 @@ export type {
   ExtractAtomUpdate,
   SetStateAction,
 } from './core/typeUtils'
+export type { Store } from './core/store'
 export {
-  Store,
   createStore,
   READ_ATOM,
   WRITE_ATOM,
