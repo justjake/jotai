@@ -9,6 +9,19 @@ export type {
   ExtractAtomUpdate,
   SetStateAction,
 } from './core/typeUtils'
+export {
+  Store,
+  createStore,
+  READ_ATOM,
+  WRITE_ATOM,
+  COMMIT_ATOM,
+  SUBSCRIBE_ATOM,
+  RESTORE_ATOMS,
+  DEV_SUBSCRIBE_STATE,
+  DEV_GET_MOUNTED_ATOMS,
+  DEV_GET_ATOM_STATE,
+  DEV_GET_MOUNTED,
+} from './core/store'
 
 /**
  * This is exported for internal use only.
