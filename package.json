@@ -1,5 +1,5 @@
 {
-  "name": "jotai",
+  "name": "@jitl/jotai",
   "private": true,
   "version": "1.5.0",
   "description": "👻 Next gen state management that will spook you",
