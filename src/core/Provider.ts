@@ -15,6 +15,7 @@ import {
   DEV_GET_MOUNTED,
   DEV_GET_MOUNTED_ATOMS,
   DEV_SUBSCRIBE_STATE,
+  createStore,
 } from './store'
 import type { AtomState, Store, VersionObject } from './store'
 
@@ -23,6 +24,7 @@ export const Provider = ({
   initialValues,
   scope,
   unstable_enableVersionedWrite,
+  unstable_createStore,
 }: PropsWithChildren<{
   initialValues?: Iterable<readonly [Atom<unknown>, unknown]>
   scope?: Scope
@@ -34,6 +36,8 @@ export const Provider = ({
    * c) then state branching works.
    */
   unstable_enableVersionedWrite?: boolean
+  /** Unstable. Inject a store constructor. */
+  unstable_createStore?: typeof createStore
 }>) => {
   const [version, setVersion] = useState<VersionObject>()
   useEffect(() => {
@@ -49,7 +53,10 @@ export const Provider = ({
   const scopeContainerRef = useRef<ScopeContainer>()
   if (!scopeContainerRef.current) {
     // lazy initialization
-    scopeContainerRef.current = createScopeContainer(initialValues)
+    scopeContainerRef.current = createScopeContainer(
+      initialValues,
+      unstable_createStore
+    )
     if (unstable_enableVersionedWrite) {
       scopeContainerRef.current.w = (write) => {
         setVersion((parentVersion) => {

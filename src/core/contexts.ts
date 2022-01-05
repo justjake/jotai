@@ -1,7 +1,7 @@
 import { createContext } from 'react'
 import type { Context } from 'react'
 import type { Atom, Scope } from './atom'
-import { createStore } from './store'
+import { createStore as defaultCreateStore } from './store'
 import type { Store } from './store'
 
 type VersionedWrite = (write: (version?: object) => void) => void
@@ -12,7 +12,8 @@ export type ScopeContainer = {
 }
 
 export const createScopeContainer = (
-  initialValues?: Iterable<readonly [Atom<unknown>, unknown]>
+  initialValues?: Iterable<readonly [Atom<unknown>, unknown]>,
+  createStore = defaultCreateStore
 ): ScopeContainer => {
   const store = createStore(initialValues)
   return { s: store }
