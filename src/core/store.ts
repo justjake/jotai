@@ -101,7 +101,7 @@ type Mounted = {
 }
 
 // for debugging purpose only
-type StateListener = () => void
+type StateListener = (write?: WriteEvent) => void
 type MountedAtoms = Set<AnyAtom>
 
 // store methods (not for public API)
@@ -267,7 +267,7 @@ export const createStore = (
       if (!atomState) {
         atomState = getAtomState(version.p, atom)
         if (atomState) {
-          if ('p' in atomState && !('pv' in atomState)) {
+          if ('p' in atomState) {
             atomState.p.then(() => versionedAtomStateMap.delete(atom))
           }
           versionedAtomStateMap.set(atom, atomState)
@@ -662,7 +662,8 @@ export const createStore = (
   const writeAtomState = <Value, Update, Result extends void | Promise<void>>(
     version: VersionObject | undefined,
     atom: WritableAtom<Value, Update, Result>,
-    update: Update
+    update: Update,
+    event?: WriteEvent
   ): void | Promise<void> => {
     let isSync = true
     const writeGetter: WriteGetter = <V>(
@@ -729,7 +730,12 @@ export const createStore = (
         setAtomPromiseOrValue(version, a, v)
         invalidateDependents(version, a)
       } else {
-        promiseOrVoid = writeAtomState(version, a as AnyWritableAtom, v)
+        promiseOrVoid = writeAtomState(
+          version,
+          a as AnyWritableAtom,
+          v,
+          event?.newChildWrite(a, v)
+        )
       }
       if (!isSync) {
         flushPending(version)
@@ -747,7 +753,10 @@ export const createStore = (
     update: Update,
     version?: VersionObject
   ): void | Promise<void> => {
-    const promiseOrVoid = writeAtomState(version, writingAtom, update)
+    const event = isDebugMode()
+      ? new WriteEvent(writingAtom, update)
+      : undefined
+    const promiseOrVoid = writeAtomState(version, writingAtom, update, event)
     flushPending(version)
     return promiseOrVoid
   }
@@ -853,7 +862,10 @@ export const createStore = (
     })
   }
 
-  const flushPending = (version: VersionObject | undefined): void => {
+  const flushPending = (
+    version: VersionObject | undefined,
+    writeEvent?: WriteEvent
+  ): void => {
     if (version) {
       const versionedAtomStateMap = getVersionedAtomStateMap(version)
       versionedAtomStateMap.forEach((atomState, atom) => {
@@ -875,7 +887,7 @@ export const createStore = (
       mounted?.l.forEach((listener) => listener())
     })
     if (typeof process === 'object' && process.env.NODE_ENV !== 'production') {
-      stateListeners.forEach((l) => l())
+      stateListeners.forEach((l) => l(writeEvent))
     }
   }
 
@@ -956,5 +968,54 @@ export const createStore = (
     [RESTORE_ATOMS]: restoreAtoms,
   }
 }
+
+const isDebugMode = () =>
+  typeof process === 'object' && process.env.NODE_ENV !== 'production'
+export class DevtoolsEvent {
+  atom: AnyAtom
+  stack: string[]
+  ts: number
+  constructor(atom: AnyAtom) {
+    this.ts = Date.now()
+    this.atom = atom
+    try {
+      throw new Error()
+    } catch (error) {
+      if (error && error instanceof Error && error.stack) {
+        this.stack = error.stack.split('\n')
+      } else {
+        this.stack = []
+      }
+    }
+  }
+}
+export class WriteEvent extends DevtoolsEvent {
+  static getRootEvent(writeEvent: WriteEvent) {
+    while (writeEvent.parent) {
+      writeEvent = writeEvent.parent
+    }
+    return writeEvent
+  }
+
+  update: unknown
+  parent: WriteEvent | undefined
+  children: WriteEvent[] = []
+
+  constructor(atom: AnyAtom, update: unknown) {
+    super(atom)
+    this.update = update
+  }
+
+  newChildWrite(atom: AnyAtom, update: unknown) {
+    const child = new WriteEvent(atom, update)
+    child.parent = this
+    this.children.push(child)
+    return child
+  }
+}
+
+export class ReadEvent extends DevtoolsEvent {}
+
+// Debug-only
 
 export type Store = ReturnType<typeof createStore>
